@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web App with FileReader, Drag&Drop and Device APIs</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #fafafa;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        section {
+            max-width: 600px;
+            margin: auto;
+        }
+        .container {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #file-select-button,
+        #capture-image-button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        #file-select-button:hover,
+        #capture-image-button:hover {
+            background-color: #0056b3;
+        }
+        #drop-zone {
+            border: 2px dashed #007bff;
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #007bff;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+        }
+        #drop-zone.active {
+            background-color: #ebf4fd;
+        }
+        #output {
+            margin-top: 20px;
+        }
+        p.error-message {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Файловая загрузка, Drag'n'Drop и работа с устройством</h1>
+</header>
+
+<section>
+    <!-- Контейнер для основной области -->
+    <div class="container">
+        <!-- Область для загрузки файлов -->
+        <div id="file-selection-area">
+            <label for="file-input">
+                <button id="file-select-button">Выберите изображение...</button>
+            </label>
+            <input type="file" accept="image/*" multiple style="display:none;" id="file-input"/>
+        </div>
+
+        <!-- Область для перетаскивания файлов -->
+        <div id="drop-zone">
+            Перетащите сюда файл...
+        </div>
+
+        <!-- Кнопка для захвата изображения с камеры -->
+        <button id="capture-image-button">Сделать снимок камерой</button>
+    </div>
+
+    <!-- Отображаемая зона для вывода результатов -->
+    <div id="output"></div>
+</section>
+
+<footer>
+    Разработано для демонстрации возможностей Web-технологий.
+</footer>
+
+<script>
+    // Инициализация переменных
+    const fileSelectButton = document.getElementById('file-select-button');
+    const fileInput = document.getElementById('file-input');
+    const captureImageButton = document.getElementById('capture-image-button');
+    const outputArea = document.getElementById('output');
+    const dropZone = document.getElementById('drop-zone');
+
+    // Метод обработки выбранных файлов через FileReader API
+    function processFiles(files) {
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const image = document.createElement('img');
+                image.src = event.target.result;
+                image.alt = file.name;
+                outputArea.appendChild(image);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Настройка кнопки для открытия окна выбора файлов
+    fileSelectButton.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Обработка выбранного файла через input
+    fileInput.addEventListener('change', (event) => {
+        const selectedFiles = event.target.files;
+        processFiles(selectedFiles);
+    });
+
+    // Настройка области перетаскивания
+    dropZone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropZone.classList.add('active');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('active');
+    });
+
+    dropZone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        dropZone.classList.remove('active');
+        const droppedFiles = event.dataTransfer.files;
+        processFiles(droppedFiles);
+    });
+
+    // Работа с камерой (MediaDevices API)
+    async function takePhoto() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.play();
+
+            // Сделаем снимок спустя небольшую задержку, чтобы камера успела запуститься
+            setTimeout(async () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/png');
+
+                // Закрываем поток видеокамеры
+                stream.getTracks().forEach(track => track.stop());
+
+                // Преобразуем полученный снимок в изображение
+                const image = document.createElement('img');
+                image.src = dataUrl;
+                outputArea.appendChild(image);
+            }, 500);
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка при доступе к камере.');
+        }
+    }
+
+    // Обрабатываем нажатие на кнопку "Сделать снимок"
+    captureImageButton.addEventListener('click', takePhoto);
+</script>
+
+</body>
+</html>
